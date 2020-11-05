@@ -5,10 +5,12 @@
 import os
 import time
 import requests
+import threading
 import sounddevice as sd
 import numpy as np
 from dotenv import load_dotenv
 from nanoleafapi import Nanoleaf 
+from datetime import datetime
 
 load_dotenv()
 
@@ -16,6 +18,8 @@ API_KEY = os.getenv("API_KEY")
 NANOLEAF_IP = os.getenv("NANOLEAF_IP")
 NANOLEAF_IP_PORTLESS = os.getenv("NANOLEAF_IP_PORTLESS")
 SENSIBILITY = int(os.getenv("SENSIBILITY"))
+ENABLE_LOGS = int(os.getenv("ENABLE_LOGS"))
+MAX_LOGS_LENGTH = int(os.getenv("MAX_LOGS_LENGTH"))
 MIN_RED = int(os.getenv("MIN_RED"))
 MIN_GREEN = int(os.getenv("MIN_GREEN"))
 MIN_BLUE = int(os.getenv("MIN_BLUE"))
@@ -29,21 +33,9 @@ g_volume = 0
 def GET(path):
     return requests.get("http://" + NANOLEAF_IP + '/api/v1/' + API_KEY + path)
 
-def PUT(path, data):
-    return requests.put("http://" + NANOLEAF_IP + '/api/v1/' + API_KEY + path, data)
-
-
-def print_sound(indata, frames, time, status):
-    volume_norm = np.linalg.norm(indata)*10
-    print(str(volume_norm) + "|" * int(volume_norm))
-
 def update_sound(indata, frames, time, status):
     global g_volume
     g_volume = np.linalg.norm(indata)*10 * SENSIBILITY
-
-def poll_sound_beta():
-    with sd.InputStream(callback=print_sound):
-        sd.sleep(10000)
 
 def associate_panel_id_to_intensity(volume, cluster_info):
     num_panels = cluster_info["panelLayout"]["layout"]["numPanels"]
@@ -102,9 +94,6 @@ def intensities_to_payload(intensities):
         panel_green *= panel_intensity_percent
         panel_blue *= panel_intensity_percent
 
-        # R = int(255 * intensity["intensity"] / 100)
-        # G = int(255 * intensity["intensity"] / 100)
-        # B = int(255 * intensity["intensity"] / 100)
         R = int(panel_red)
         G = int(panel_green)
         B = int(panel_blue)
@@ -114,9 +103,32 @@ def intensities_to_payload(intensities):
 
     return payload
 
+def write_log():
+    written_entries = 0
+    global g_volume
+
+    while True:
+        file_name = datetime.now().strftime("%Y%m%d-%H:%M:%S") + ".log"
+        with open(file_name, "a") as file:
+            while written_entries < MAX_LOGS_LENGTH:
+                current_time = int(time.time())
+                volume = int(g_volume)
+                file.write("{},{}\n".format(current_time, volume))
+                file.flush()
+                written_entries += 1
+                time.sleep(1)
+            
+            written_entries = 0
+
+
 def main():
     cluster_info = GET("").json()
     nl = Nanoleaf(NANOLEAF_IP_PORTLESS, API_KEY)
+
+    if ENABLE_LOGS:
+        print("Logs enabled")
+        bg = threading.Thread(name='logs', target=write_log)
+        bg.start()
     
     with sd.InputStream(callback=update_sound):
         while True:
@@ -124,11 +136,11 @@ def main():
             
             intensities = associate_panel_id_to_intensity(g_volume, cluster_info)
             payload = intensities_to_payload(intensities)
-            print("Volume: ", g_volume)
-            # print("Payload", payload["animData"])
             nl.write_effect(payload)
 
+            # print("Volume: ", g_volume)
+            # print("Payload", payload["animData"])
+
     # https://pypi.org/project/nanoleafapi/
-    #nl.set_color((0, 0, 255))
 
 main()

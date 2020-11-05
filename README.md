@@ -15,3 +15,9 @@ In `.env`, fill in the missing properties:
 Adjust sensibility based on your microphone. Edit the colors used as you wish.
 
 Connect the canvas in the order of the sound bar path. Personnally, I always start with the main station.
+
+# Logging
+
+Set ENABLE_LOGS to 1 for logging. MAX_LOGS_LENGTH is the max amount of lines your logfile will have
+
+The log is in this format: `<epoch timestamp>,<mic volume>\n`
