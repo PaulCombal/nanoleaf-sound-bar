@@ -1,9 +1,19 @@
 Nanoleaf sound bar
 ===
 
-# Setup
+# Installation
 
-I set up a virtualenv to run this script, but you can do without.
+If you're not familiar with command line or Python here's a step-by-step guide on how to run this on a Raspberry Pi.
+If you know what you're doing, you probably won't need to read this.
+After running `$ git clone (repo)`, use `cd` to move into the cloned repository folder.
+* Run `$ python -m venv .`.
+* Run `source bin/activate`
+* Run `pip install requests sounddevice numpy python-dotenv nanoleafapi`
+
+If you get an error message mentionning 'PortAudio library not found', you will need to run `$ sudo apt install libportaudio2` in another terminal.
+Similarly, if you get an error mentionning 'libfs77blas.so.x', please run `$ sudo apt install libatlas-base-dev` in a separate terminal.
+
+# Configuration
 
 `$ cp .env.template .env`
 
